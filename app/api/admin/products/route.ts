@@ -4,6 +4,8 @@ import Product from "@/lib/models/Product";
 import Category from "@/lib/models/Category";
 import { memoryStore } from "@/lib/memory_store";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
     await connectToDatabase();
 
@@ -39,17 +41,25 @@ export async function PUT(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-    await connectToDatabase();
+    try {
+        await connectToDatabase();
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    if (!id) return NextResponse.json({ error: "Missing product ID" }, { status: 400 });
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id');
+        if (!id) return NextResponse.json({ error: "Missing product ID" }, { status: 400 });
 
-    const result = await Product.findByIdAndDelete(id);
+        const result = await Product.findByIdAndDelete(id);
 
-    if (!result) {
-        return NextResponse.json({ error: "Product not found or already deleted" }, { status: 404 });
+        if (!result) {
+            return NextResponse.json({ error: "Product not found or already deleted" }, { status: 404 });
+        }
+
+        return NextResponse.json({ success: true });
+    } catch (error: any) {
+        console.error("Delete Product Error:", error);
+        return NextResponse.json({
+            error: `Delete Failed: ${error.message || error.toString()}`,
+            details: error
+        }, { status: 500 });
     }
-
-    return NextResponse.json({ success: true });
 }
