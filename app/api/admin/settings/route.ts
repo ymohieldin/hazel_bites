@@ -6,9 +6,12 @@ import { memoryStore } from "@/lib/memory_store";
 export async function GET() {
     try {
         await connectToDatabase();
-        // Assume single restaurant for MVP context, id="1"
-        const settings = await Restaurant.findOne({ ownerId: "1" }); // using ownerId as proxy for now
+        // Get the single active restaurant
+        const settings = await Restaurant.findOne();
         if (settings) return NextResponse.json(settings);
+
+        // If no restaurant exists (rare if seeded), return empty structure
+        return NextResponse.json({ name: "Hazel Bites", currency: "EGP" });
     } catch (e) {
         console.warn("DB offline for settings fetch, using fallback");
     }
@@ -25,14 +28,29 @@ export async function PUT(request: Request) {
 
     try {
         await connectToDatabase();
-        const settings = await Restaurant.findOneAndUpdate(
-            { ownerId: "1" },
-            body,
-            { new: true, upsert: true }
-        );
-        return NextResponse.json(settings);
+
+        // Find FIRST restaurant and update it (since we are single-tenant for now)
+        // If we used findOneAndUpdate with a filter, it might miss if IDs don't match.
+        const restaurant = await Restaurant.findOne();
+
+        if (restaurant) {
+            const updated = await Restaurant.findByIdAndUpdate(
+                restaurant._id,
+                body,
+                { new: true }
+            );
+            return NextResponse.json(updated);
+        } else {
+            // Create if doesn't exist (fallback)
+            const newRestaurant = await Restaurant.create({
+                ...body,
+                ownerId: "1" // Default
+            });
+            return NextResponse.json(newRestaurant);
+        }
+
     } catch (e) {
-        console.warn("DB offline for settings update, using fallback");
+        console.warn("DB offline for settings update, using fallback", e);
         const updated = memoryStore.updateSettings(body);
         return NextResponse.json(updated);
     }
