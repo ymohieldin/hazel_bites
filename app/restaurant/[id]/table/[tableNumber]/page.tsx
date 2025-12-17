@@ -25,6 +25,8 @@ export default async function MenuPage({ params }: { params: Promise<{ id: strin
     const { default: Category } = await import("@/lib/models/Category");
     const { memoryStore } = await import("@/lib/memory_store");
 
+    const { default: Restaurant } = await import("@/lib/models/Restaurant");
+
     let categories = [];
     let products = [];
     let restaurantName = "Hazel Bites";
@@ -32,20 +34,24 @@ export default async function MenuPage({ params }: { params: Promise<{ id: strin
     try {
         await connectToDatabase();
 
-        // Fetch Categories
-        const cats = await Category.find({ restaurantId: "1" }).lean();
-        categories = JSON.parse(JSON.stringify(cats)); // Serialise for Client Component
+        // Dynamic Restaurant Fetch: Get the actual active restaurant
+        const restaurant = await Restaurant.findOne().lean() || { _id: "1", name: "Hazel Bites" };
+        const dbRestaurantId = restaurant._id.toString();
+        restaurantName = restaurant.name;
 
-        // Fetch Products
-        const prods = await Product.find({ restaurantId: "1" }).lean();
+        // Fetch Categories & Products for THIS restaurant
+        const cats = await Category.find({ restaurantId: dbRestaurantId }).lean();
+        categories = JSON.parse(JSON.stringify(cats));
+
+        const prods = await Product.find({ restaurantId: dbRestaurantId }).lean();
         products = JSON.parse(JSON.stringify(prods));
 
-        // Use defaults if DB is empty (shouldn't happen if seeded)
-        if (categories.length === 0) categories = memoryStore.getCategories();
-        if (products.length === 0) products = memoryStore.getProducts();
+        // NOTE: We do NOT fallback to memoryStore if authentic DB connection succeeds but returns empty.
+        // This ensures if you delete everything, you truly see an empty menu.
 
     } catch (error) {
         console.error("Menu Fetch Error (using fallback):", error);
+        // Only fallback if the Database Connection ITSELF failed completely
         categories = memoryStore.getCategories();
         products = memoryStore.getProducts();
     }
