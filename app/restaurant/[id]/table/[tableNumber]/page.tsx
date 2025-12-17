@@ -19,16 +19,36 @@ export const dynamic = "force-dynamic";
 export default async function MenuPage({ params }: { params: Promise<{ id: string; tableNumber: string }> }) {
     const { id, tableNumber } = await params;
 
-    // Use memory store for consistent state between Admin and Customer views
-    // This allows changes in Admin (Product/Category addition) to appear here even without DB.
+    // We fetch data from the Database (MongoDB) if available, otherwise fallback to memory/mock
+    const { default: connectToDatabase } = await import("@/lib/db");
+    const { default: Product } = await import("@/lib/models/Product");
+    const { default: Category } = await import("@/lib/models/Category");
     const { memoryStore } = await import("@/lib/memory_store");
 
-    // We get the raw data from memory store
-    const categories: any = memoryStore.getCategories();
-    const products: any = memoryStore.getProducts();
-    const settings = memoryStore.getSettings();
+    let categories = [];
+    let products = [];
+    let restaurantName = "Hazel Bites";
 
-    const restaurantName = settings.name || "Hazel Bites";
+    try {
+        await connectToDatabase();
+
+        // Fetch Categories
+        const cats = await Category.find({ restaurantId: "1" }).lean();
+        categories = JSON.parse(JSON.stringify(cats)); // Serialise for Client Component
+
+        // Fetch Products
+        const prods = await Product.find({ restaurantId: "1" }).lean();
+        products = JSON.parse(JSON.stringify(prods));
+
+        // Use defaults if DB is empty (shouldn't happen if seeded)
+        if (categories.length === 0) categories = memoryStore.getCategories();
+        if (products.length === 0) products = memoryStore.getProducts();
+
+    } catch (error) {
+        console.error("Menu Fetch Error (using fallback):", error);
+        categories = memoryStore.getCategories();
+        products = memoryStore.getProducts();
+    }
 
     return (
         <CartProvider>
