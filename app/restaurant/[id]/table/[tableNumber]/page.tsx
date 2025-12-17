@@ -14,6 +14,8 @@ import { EGYPTIAN_MENU_DATA } from "@/lib/mock_data";
 // Inner component to use hook contexts
 import MenuPageClient from "@/components/menu/MenuPageClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function MenuPage({ params }: { params: Promise<{ id: string; tableNumber: string }> }) {
     const { id, tableNumber } = await params;
 
