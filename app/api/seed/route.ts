@@ -18,7 +18,7 @@ export async function GET() {
         // 1. Create Restaurant
         const restaurant = await Restaurant.create({
             name: "Hazel Bites",
-            address: "123 Nile View, Cairo",
+            ownerId: "admin", // Dummy ID for seeding
         });
 
         // 2. Create Tables (1-15)
