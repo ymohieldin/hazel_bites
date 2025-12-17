@@ -5,27 +5,14 @@ import Category from "@/lib/models/Category";
 import { memoryStore } from "@/lib/memory_store";
 
 export async function GET() {
-    try {
-        await connectToDatabase();
-        // Health check
-        await Product.findOne().select("_id").lean();
+    await connectToDatabase();
 
-        const products = await Product.find({})
-            .populate("categoryId", "name")
-            .sort({ createdAt: -1 });
-        return NextResponse.json(products);
-    } catch (error) {
-        console.error("Fetch Products Error (using fallback):", error);
-        // Emulate populate for category name
-        const products = memoryStore.getProducts().map(p => {
-            const cat = memoryStore.getCategories().find(c => c._id === p.categoryId);
-            return {
-                ...p,
-                categoryId: typeof p.categoryId === 'string' ? { _id: p.categoryId, name: cat?.name || "Unknown" } : p.categoryId
-            };
-        });
-        return NextResponse.json(products);
-    }
+    // Fetch products strictly from DB
+    const products = await Product.find({})
+        .populate("categoryId", "name")
+        .sort({ createdAt: -1 });
+
+    return NextResponse.json(products);
 }
 
 export async function POST(request: Request) {
