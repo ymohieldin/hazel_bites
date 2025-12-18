@@ -35,19 +35,16 @@ export default async function MenuPage({ params }: { params: Promise<{ id: strin
         await connectToDatabase();
 
         // Dynamic Restaurant Fetch: Get the actual active restaurant
-        const restaurant = await Restaurant.findOne().lean() || { _id: "1", name: "Hazel Bites" };
-        const dbRestaurantId = restaurant._id.toString();
-        restaurantName = restaurant.name;
+        const restaurant = await Restaurant.findOne().lean();
+        restaurantName = restaurant?.name || "Hazel Bites";
 
-        // Fetch Categories & Products for THIS restaurant
-        const cats = await Category.find({ restaurantId: dbRestaurantId }).lean();
+        // MVP: Fetch ALL categories and products to prevent ID mismatch issues
+        // Since we are single-tenant, this is safe and reliable.
+        const cats = await Category.find({}).sort({ order: 1 }).lean();
         categories = JSON.parse(JSON.stringify(cats));
 
-        const prods = await Product.find({ restaurantId: dbRestaurantId }).lean();
+        const prods = await Product.find({}).lean();
         products = JSON.parse(JSON.stringify(prods));
-
-        // NOTE: We do NOT fallback to memoryStore if authentic DB connection succeeds but returns empty.
-        // This ensures if you delete everything, you truly see an empty menu.
 
     } catch (error) {
         console.error("Menu Fetch Error (using fallback):", error);
